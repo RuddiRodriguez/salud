@@ -41,4 +41,4 @@ def migraine_trace_figure(df):
 
     # Create the figure and add the migraine trace and layout
     fig = go.Figure(data=[migraine_trace], layout=layout)
-    return fig
+    return fig, merged_df

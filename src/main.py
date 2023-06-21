@@ -22,6 +22,7 @@ def get_data():
     return df
 
 df = get_data()
+
 # define a translation function
 def translate_text(text):
     return translator.translate(text, dest='en').text
@@ -54,34 +55,36 @@ df['Date'] = df['Date'].dt.date
 df['Date'] = pd.to_datetime(df['Date'])
 st.experimental_data_editor(df)
 
-fig_migraine_trace = migraine_trace_figure(df)
+fig_migraine_trace,merged_df = migraine_trace_figure(df)
 st.plotly_chart(fig_migraine_trace, use_container_width=True)
 
 # Group the data by month and calculate the average pain intensity
 # Create a new column with year and month
-df['YearMonth'] = df['Date'].dt.to_period('W')
-average_intensity_monthly = df.groupby('YearMonth')['Pain intensity'].mean().reset_index()
-std_intensity_monthly = df.groupby('YearMonth')['Pain intensity'].std().reset_index()
+def intensity(df, merged_df):
+    merged_df['YearMonth'] = merged_df['Date'].dt.to_period('M')
+    df['YearMonth'] = df['Date'].dt.to_period('M')
+    average_intensity_monthly = df.groupby('YearMonth')['Pain intensity'].mean().reset_index()
+    std_intensity_monthly = df.groupby('YearMonth')['Pain intensity'].std().reset_index()
 
 # Create a bar trace for the average pain intensity per day
-bar_trace = go.Bar(x=df['Date'], y=df['Pain intensity'],
+    bar_trace = go.Bar(x=df['Date'], y=df['Pain intensity'],
                    marker=dict(color='blue'),
                    name='Daily Average Intensity'
                    )
 
 # Create a line trace for the average pain intensity per month
-line_trace = go.Scatter(x=average_intensity_monthly['YearMonth'].dt.to_timestamp(), y=average_intensity_monthly['Pain intensity'],
+    line_trace = go.Scatter(x=average_intensity_monthly['YearMonth'].dt.to_timestamp(), y=average_intensity_monthly['Pain intensity'],
                         mode='lines',
                         line=dict(color='red'),
                         name='Monthly Average Intensity'
                         )
 
 # Calculate the upper and lower bounds of the error bars
-upper_bound = average_intensity_monthly['Pain intensity'] + std_intensity_monthly['Pain intensity']
-lower_bound = average_intensity_monthly['Pain intensity'] - std_intensity_monthly['Pain intensity']
+    upper_bound = average_intensity_monthly['Pain intensity'] + std_intensity_monthly['Pain intensity']
+    lower_bound = average_intensity_monthly['Pain intensity'] - std_intensity_monthly['Pain intensity']
 
 # Create error bars for the line trace
-line_error_bars = go.Scatter(x=average_intensity_monthly['YearMonth'].dt.to_timestamp(),
+    line_error_bars = go.Scatter(x=average_intensity_monthly['YearMonth'].dt.to_timestamp(),
                              y=average_intensity_monthly['Pain intensity'],
                              mode='lines',
                              line=dict(color='red', width=0),
@@ -99,10 +102,13 @@ line_error_bars = go.Scatter(x=average_intensity_monthly['YearMonth'].dt.to_time
                              )
 
 # Create a layout for the figure
-layout = go.Layout(title='Average Pain Intensity', xaxis=dict(title='Date'), yaxis=dict(title='Average Intensity'))
+    layout = go.Layout(title='Average Pain Intensity', xaxis=dict(title='Date'), yaxis=dict(title='Average Intensity'),width=1000)
 
 # Create the figure and add the bar, line, and error bar traces, and layout
-fig = go.Figure(data=[bar_trace, line_trace, line_error_bars], layout=layout)
+    fig = go.Figure(data=[bar_trace, line_trace , line_error_bars], layout=layout)
+    return fig
+
+fig = intensity(df, merged_df)
 
 st.plotly_chart(fig)
 
@@ -133,5 +139,26 @@ fig = go.Figure(data=[bar_trace], layout=layout)
 
 # Sort the x-axis categories based on the cause percentages
 fig.update_xaxes(categoryorder='array', categoryarray=sorted_cause_percentages.index)
+
+st.plotly_chart(fig)
+
+
+
+# Group the data by week and calculate the average number of attacks per week
+weekly_average = merged_df.groupby('YearMonth')['Migraine'].sum().reset_index()
+
+# Create a bar trace for the average number of attacks per week
+bar_trace = go.Bar(x=weekly_average['YearMonth'].dt.to_timestamp(), y=weekly_average['Migraine'],
+                        
+                        
+                        name='Monthly Average Number of Attacks'
+                        )
+                   
+
+# Create a layout for the figure
+layout = go.Layout(title='Average Number of Attacks per Week', yaxis=dict(title='Number of Attacks'))
+
+# Create the figure and add the bar trace and layout
+fig = go.Figure(data=[bar_trace], layout=layout)
 
 st.plotly_chart(fig)
